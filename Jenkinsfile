@@ -76,6 +76,21 @@ pipeline {
             }
         }
 
+        stage('Prepare Reports Directory') {
+            steps {
+                echo '📁 Создаем папку для отчетов...'
+                script {
+                    // Создаем папку reports, если её нет
+                    if (!fileExists(REPORT_DIR)) {
+                        sh "mkdir -p ${REPORT_DIR}"
+                        echo "✅ Папка ${REPORT_DIR} создана"
+                    } else {
+                        echo "️ Папка ${REPORT_DIR} уже существует"
+                    }
+                }
+            }
+        }
+
         stage('Run Performance Tests') {
             steps {
                 echo ' Запускаем нагрузочные тесты...'
