@@ -32,11 +32,6 @@ pipeline {
         disableConcurrentBuilds()
     }
 
-    // Триггер по расписанию (каждые 5 минут)
-    triggers {
-        cron('H/5 * * * *')
-    }
-
     environment {
         DOCKER_COMPOSE = 'docker compose'
         REPORT_DIR = 'reports'
