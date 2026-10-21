@@ -1,5 +1,5 @@
 target:
-  base_url: "http://localhost:8080"
+  base_url: "http://localhost:8081"
   timeout_ms: 5000
 
 # Профиль нагрузки
