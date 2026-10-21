@@ -121,6 +121,28 @@ pipeline {
             }
         }
 
+        stage('Extract Reports from Container') {
+            steps {
+                echo '📦 Извлекаем отчет из контейнера через docker cp...'
+                script {
+                    // Находим ID контейнера perf-test (даже если он уже stopped)
+                    def containerId = sh(script: 'docker compose ps -a -q perf-test', returnStdout: true).trim()
+                    
+                    if (containerId) {
+                        echo "✅ Найден контейнер: ${containerId}"
+                        // Копируем содержимое папки /app/reports из контейнера в папку reports на хосте
+                        // Точка в конце /app/reports/. важна! Она копирует содержимое, а не саму папку
+                        sh "docker cp ${containerId}:/app/reports/. ./reports/"
+                        
+                        echo "🔍 Проверка содержимого папки reports после копирования:"
+                        sh "ls -la reports/"
+                    } else {
+                        echo "⚠️ Контейнер perf-test не найден. Возможно, он не запустился."
+                    }
+                }
+            }
+        }
+
         stage('Collect Reports') {
             when {
                 expression { params.GENERATE_REPORT == true }
