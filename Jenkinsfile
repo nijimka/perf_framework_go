@@ -94,11 +94,8 @@ pipeline {
             steps {
                 echo '📁 Создаем папку для отчетов...'
                 script {
-                    // Очищаем старые отчеты перед запуском
-                    if (fileExists(REPORT_DIR)) {
-                        echo '🗑️  Удаляем старые отчеты...'
-                        sh "rm -f ${REPORT_DIR}/*.html || true"
-                    } else {
+                    // Просто создаем, если нет. Никаких удалений!
+                    if (!fileExists(REPORT_DIR)) {
                         sh "mkdir -p ${REPORT_DIR}"
                     }
                     echo "✅ Папка ${REPORT_DIR} готова"
@@ -122,7 +119,28 @@ pipeline {
             }
         }
 
-        
+        stage('Extract Reports from Container') {
+            steps {
+                echo '📦 Извлекаем отчет из контейнера через docker cp...'
+                script {
+                    def containerId = sh(script: 'docker compose ps -a -q perf-test', returnStdout: true).trim()
+                    
+                    if (containerId) {
+                        echo "✅ Найден контейнер: ${containerId}"
+                        sh "mkdir -p ${REPORT_DIR}"
+                        sh "docker cp ${containerId}:/app/reports/. ./${REPORT_DIR}/"
+                        
+                        // Критически важно для прав доступа в Jenkins
+                        sh "chmod -R 777 ${REPORT_DIR} || true"
+                        
+                        echo "🔍 Проверка содержимого:"
+                        sh "ls -la ${REPORT_DIR}/"
+                    } else {
+                        echo "⚠️ Контейнер perf-test не найден."
+                    }
+                }
+            }
+        }        
 
         stage('Collect Reports') {
             when {
@@ -143,25 +161,24 @@ pipeline {
         }
     }
 
-    post {
+        post {
         always {
             script {
-                if (fileExists("${REPORT_DIR}")) {
-                    echo '📦 Архивируем отчеты...'
-                    archiveArtifacts artifacts: "${REPORT_DIR}/*.html", allowEmptyArchive: true
-                    
-                    publishHTML([
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: false,
-                        reportDir: "${REPORT_DIR}",
-                        reportFiles: '*.html',
-                        reportName: 'Performance Report',
-                        reportTitles: 'Нагрузочное тестирование'
-                    ])
-                }
+                echo '📦 Архивируем отчеты...'
+                
+                // "'reports/**/*.html' doesn't match anything, but '**/*.html' does"
+                archiveArtifacts artifacts: '**/*.html', allowEmptyArchive: true
+                
+                publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true, 
+                    reportDir: "${REPORT_DIR}",
+                    reportFiles: '*.html',
+                    reportName: 'Performance Report',
+                    reportTitles: 'Нагрузочное тестирование'
+                ])
             }
-            
             
             echo '🧹 Очистка после завершения...'
             sh '${DOCKER_COMPOSE} down || true'
@@ -172,7 +189,7 @@ pipeline {
         }
         
         failure {
-            echo '❌ Тесты завершились с ошибками! Проверьте Console Output.'
+            echo '❌ Тесты завершились с ошибками!'
         }
     }
 }
