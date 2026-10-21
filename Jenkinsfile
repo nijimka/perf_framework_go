@@ -112,6 +112,15 @@ pipeline {
             }
         }
 
+        stage('Debug Reports on Host') {
+            steps {
+                echo '🔍 Проверяем, попал ли файл из контейнера на хост Jenkins...'
+                sh 'echo "Текущая директория: $(pwd)"'
+                sh 'ls -la reports/ || echo "Папка reports пуста или не существует!"'
+                sh 'find . -name "*.html" || echo "HTML файлы не найдены"'
+            }
+        }
+
         stage('Collect Reports') {
             when {
                 expression { params.GENERATE_REPORT == true }

@@ -132,7 +132,7 @@ func runWorker(workerID int, scenario config.ScenarioConfig,
 }
 
 func generateReport(baseURL string, m *metrics.Metrics) {
-	reportDir := "reports"
+	reportDir := "/app/reports"
 	if err := os.MkdirAll(reportDir, 0755); err != nil {
 		log.Printf("Не удалось создать директорию %s: %v", reportDir, err)
 		return
