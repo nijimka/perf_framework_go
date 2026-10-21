@@ -114,7 +114,7 @@ pipeline {
             }
         }
 
-                stage('Extract Reports from Container') {
+        stage('Extract Reports from Container') {
             steps {
                 echo '📦 Извлекаем отчет из контейнера через docker cp...'
                 script {
