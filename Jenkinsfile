@@ -1,7 +1,6 @@
 pipeline {
     agent any
 
-    // Параметры для ручного запуска
     parameters {
         choice(
             name: 'LOAD_PROFILE',
@@ -26,9 +25,7 @@ pipeline {
     }
 
     options {
-        // Даем 5 секунд "тишины" между триггерами, чтобы ручной клик и таймер не создали 2 джобы одновременно
         quietPeriod(5)
-        // Запрещаем запускать эту джобу параллельно саму с собой (защита от наложений)
         disableConcurrentBuilds()
     }
 
@@ -40,7 +37,7 @@ pipeline {
     stages {
         stage('Cleanup Previous Runs') {
             steps {
-                echo '🧹 Очищаем возможные zombie-контейнеры от предыдущих запусков...'
+                echo '🧹 Очищаем возможные zombie-контейнеры...'
                 sh 'docker compose down --remove-orphans || true'
             }
         }
@@ -54,7 +51,7 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                echo ' Собираем Docker образы...'
+                echo '🐳 Собираем Docker образы...'
                 sh '${DOCKER_COMPOSE} build'
             }
         }
@@ -66,8 +63,6 @@ pipeline {
                     def configFile = 'config.yaml'
                     if (fileExists(configFile)) {
                         def content = readFile(configFile)
-                        
-                        // Используем параметры или безопасные значения по умолчанию
                         def profile = params.LOAD_PROFILE ?: 'constant'
                         def workers = params.TARGET_WORKERS ?: '10'
                         def iterations = params.ITERATIONS ?: '50'
@@ -78,39 +73,15 @@ pipeline {
                         
                         writeFile file: configFile, text: content
                         echo "✅ Конфигурация обновлена: профиль=${profile}, воркеров=${workers}, итераций=${iterations}"
-                    } else {
-                        echo "⚠️ Файл config.yaml не найден, используем дефолтный."
                     }
-                }
-            }
-        }
-
-        stage('Prepare Reports Directory') {
-            steps {
-                echo '📁 Создаем папку для отчетов...'
-                script {
-                    // Просто создаем, если нет. Никаких удалений!
-                    if (!fileExists(REPORT_DIR)) {
-                        sh "mkdir -p ${REPORT_DIR}"
-                    }
-                    echo "✅ Папка ${REPORT_DIR} готова"
                 }
             }
         }
 
         stage('Run Performance Tests') {
             steps {
-                echo ' Запускаем нагрузочные тесты...'
+                echo '🚀 Запускаем нагрузочные тесты...'
                 sh '${DOCKER_COMPOSE} up --build --abort-on-container-exit perf-test'
-            }
-        }
-
-        stage('Debug Reports on Host') {
-            steps {
-                echo '🔍 Проверяем, попал ли файл из контейнера на хост Jenkins...'
-                sh 'echo "Текущая директория: $(pwd)"'
-                sh 'ls -la reports/ || echo "Папка reports пуста или не существует!"'
-                sh 'find . -name "*.html" || echo "HTML файлы не найдены"'
             }
         }
 
@@ -123,16 +94,19 @@ pipeline {
                     if (containerId) {
                         echo "✅ Найден контейнер: ${containerId}"
                         
-                        echo '️  Очищаем папку reports от старых файлов...'
-                        sh "rm -f ${REPORT_DIR}/*.html || true"
-                        // =================================================
-                        
+                        // === ЯДЕРНАЯ ОЧИСТКА ===
+                        echo '🗑️ ПОЛНОСТЬЮ удаляем папку reports, чтобы гарантировать чистоту...'
+                        sh "rm -rf ${REPORT_DIR}"
                         sh "mkdir -p ${REPORT_DIR}"
+                        // ========================
+                        
+                        // Копируем содержимое (точка в конце пути важна!)
                         sh "docker cp ${containerId}:/app/reports/. ./${REPORT_DIR}/"
                         sh "chmod -R 777 ${REPORT_DIR} || true"
                         
-                        echo "🔍 Проверка содержимого:"
+                        echo "🔍 ПРОВЕРКА: в папке должен быть ровно 1 файл:"
                         sh "ls -la ${REPORT_DIR}/"
+                        sh "echo 'Количество HTML файлов:' && find ${REPORT_DIR} -maxdepth 1 -name '*.html' | wc -l"
                     } else {
                         echo "⚠️ Контейнер perf-test не найден."
                     }
@@ -145,32 +119,28 @@ pipeline {
                 expression { params.GENERATE_REPORT == true }
             }
             steps {
-                echo '📊 Собираем отчеты...'
+                echo '📊 Финальная проверка перед архивацией...'
                 script {
-                    // Проверяем, есть ли отчеты
-                    def reportExists = fileExists("${REPORT_DIR}")
-                    if (reportExists) {
-                        echo "✅ Отчеты найдены в папке ${REPORT_DIR}"
-                    } else {
-                        echo "⚠️  Папка с отчетами не найдена"
+                    if (fileExists("${REPORT_DIR}")) {
+                        echo "✅ Папка ${REPORT_DIR} существует"
                     }
                 }
             }
         }
     }
 
-        post {
+    post {
         always {
             script {
                 echo '📦 Архивируем отчеты...'
                 
-                // "'reports/**/*.html' doesn't match anything, but '**/*.html' does"
-                archiveArtifacts artifacts: '**/*.html', allowEmptyArchive: true
+                // ИСПРАВЛЕНИЕ: ищем файлы СТРОГО в папке reports, а не во всем проекте
+                archiveArtifacts artifacts: 'reports/*.html', allowEmptyArchive: true
                 
                 publishHTML([
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
-                    keepAll: true, 
+                    keepAll: false, // Показываем в боковом меню только отчет последней сборки
                     reportDir: "${REPORT_DIR}",
                     reportFiles: '*.html',
                     reportName: 'Performance Report',
