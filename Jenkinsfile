@@ -25,6 +25,13 @@ pipeline {
         )
     }
 
+    options {
+        // Даем 5 секунд "тишины" между триггерами, чтобы ручной клик и таймер не создали 2 джобы одновременно
+        quietPeriod(5)
+        // Запрещаем запускать эту джобу параллельно саму с собой (защита от наложений)
+        disableConcurrentBuilds()
+    }
+
     // Триггер по расписанию (каждые 5 минут)
     triggers {
         cron('H/5 * * * *')
@@ -126,22 +133,26 @@ pipeline {
 
     post {
         always {
+            script {
+                if (fileExists("${REPORT_DIR}")) {
+                    echo '📦 Архивируем отчеты...'
+                    archiveArtifacts artifacts: "${REPORT_DIR}/*.html", allowEmptyArchive: true
+                    
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${REPORT_DIR}",
+                        reportFiles: '*.html',
+                        reportName: 'Performance Report',
+                        reportTitles: 'Нагрузочное тестирование'
+                    ])
+                }
+            }
+            
+            
             echo '🧹 Очистка после завершения...'
-            sh '${DOCKER_COMPOSE} down'
-            
-            // Сохраняем артефакты (отчеты)
-            archiveArtifacts artifacts: "${REPORT_DIR}/**/*.html", allowEmptyArchive: true
-            
-            // Публикуем HTML-отчет (если установлен плагин HTML Publisher)
-            publishHTML([
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: "${REPORT_DIR}",
-                reportFiles: '**/*.html',
-                reportName: 'Performance Report',
-                reportTitles: 'Нагрузочное тестирование'
-            ])
+            sh '${DOCKER_COMPOSE} down || true'
         }
         
         success {
@@ -149,9 +160,7 @@ pipeline {
         }
         
         failure {
-            echo '❌ Тесты завершились с ошибками!'
-            // Можно добавить отправку уведомлений
-            // emailext subject: "Performance Tests Failed", body: "Check Jenkins for details", to: "team@example.com"
+            echo '❌ Тесты завершились с ошибками! Проверьте Console Output.'
         }
     }
 }
