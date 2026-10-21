@@ -1,0 +1,135 @@
+pipeline {
+    agent any
+
+    // Параметры для ручного запуска
+    parameters {
+        choice(
+            name: 'LOAD_PROFILE',
+            choices: ['constant', 'ramp-up'],
+            description: 'Выберите профиль нагрузки'
+        )
+        string(
+            name: 'TARGET_WORKERS',
+            defaultValue: '10',
+            description: 'Количество воркеров'
+        )
+        string(
+            name: 'ITERATIONS',
+            defaultValue: '50',
+            description: 'Количество итераций на воркера'
+        )
+        booleanParam(
+            name: 'GENERATE_REPORT',
+            defaultValue: true,
+            description: 'Генерировать HTML-отчет'
+        )
+    }
+
+    // Триггер по расписанию (каждые 5 минут)
+    triggers {
+        cron('H/5 * * * *')
+    }
+
+    environment {
+        DOCKER_COMPOSE = 'docker compose'
+        REPORT_DIR = 'reports'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Клонируем репозиторий...'
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Images') {
+            steps {
+                echo ' Собираем Docker образы...'
+                sh '${DOCKER_COMPOSE} build'
+            }
+        }
+
+        stage('Prepare Config') {
+            steps {
+                echo '⚙️ Готовим конфигурацию...'
+                script {
+                    def configFile = 'config.yaml'
+                    if (fileExists(configFile)) {
+                        def content = readFile(configFile)
+                        
+                        // Используем параметры или безопасные значения по умолчанию
+                        def profile = params.LOAD_PROFILE ?: 'constant'
+                        def workers = params.TARGET_WORKERS ?: '10'
+                        def iterations = params.ITERATIONS ?: '50'
+                        
+                        content = content.replaceAll(/type:\s*["']?\w+["']?/, "type: \"${profile}\"")
+                        content = content.replaceAll(/target_workers:\s*\d+/, "target_workers: ${workers}")
+                        content = content.replaceAll(/iterations:\s*\d+/, "iterations: ${iterations}")
+                        
+                        writeFile file: configFile, text: content
+                        echo "✅ Конфигурация обновлена: профиль=${profile}, воркеров=${workers}, итераций=${iterations}"
+                    } else {
+                        echo "⚠️ Файл config.yaml не найден, используем дефолтный."
+                    }
+                }
+            }
+        }
+
+        stage('Run Performance Tests') {
+            steps {
+                echo ' Запускаем нагрузочные тесты...'
+                sh '${DOCKER_COMPOSE} up --build --abort-on-container-exit perf-test'
+            }
+        }
+
+        stage('Collect Reports') {
+            when {
+                expression { params.GENERATE_REPORT == true }
+            }
+            steps {
+                echo '📊 Собираем отчеты...'
+                script {
+                    // Проверяем, есть ли отчеты
+                    def reportExists = fileExists("${REPORT_DIR}")
+                    if (reportExists) {
+                        echo "✅ Отчеты найдены в папке ${REPORT_DIR}"
+                    } else {
+                        echo "⚠️  Папка с отчетами не найдена"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Очистка после завершения...'
+            sh '${DOCKER_COMPOSE} down'
+            
+            // Сохраняем артефакты (отчеты)
+            archiveArtifacts artifacts: "${REPORT_DIR}/**/*.html", allowEmptyArchive: true
+            
+            // Публикуем HTML-отчет (если установлен плагин HTML Publisher)
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: "${REPORT_DIR}",
+                reportFiles: '**/*.html',
+                reportName: 'Performance Report',
+                reportTitles: 'Нагрузочное тестирование'
+            ])
+        }
+        
+        success {
+            echo '✅ Тесты успешно завершены!'
+        }
+        
+        failure {
+            echo '❌ Тесты завершились с ошибками!'
+            // Можно добавить отправку уведомлений
+            // emailext subject: "Performance Tests Failed", body: "Check Jenkins for details", to: "team@example.com"
+        }
+    }
+}

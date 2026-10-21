@@ -4,7 +4,7 @@ target:
 
 # Профиль нагрузки
 load_profile:
-  type: "ramp-up"           # constant или ramp-up
+  type: "constant"           # constant или ramp-up
   ramp_up_duration_sec: 10  # За сколько секунд нарастить нагрузку (только для ramp-up)
   target_workers: 30        # Целевое количество воркеров
 

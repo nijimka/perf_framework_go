@@ -1,0 +1,42 @@
+# === Build artifacts ===
+reports/
+bin/
+*.exe
+
+# === Go specific ===
+go.work
+go.work.sum
+vendor/
+
+# === IDE and Editors ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# === OS specific ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# === Logs and temp files ===
+*.log
+*.tmp
+*.temp
+
+# === Docker ===
+# Обычно Docker файлы не игнорируют, но если есть локальные оверлеи:
+# docker-compose.override.yml
+
+# === Environment files (если есть секреты) ===
+# .env
+# .env.local
+# config.local.yaml
