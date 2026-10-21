@@ -23,6 +23,8 @@ services:
         condition: service_healthy
     environment:
       - TARGET_URL=http://mock-server:8080
+    volumes:
+      - ./reports:/app/reports
     networks:
       - perf-network
     # Переопределяем base_url в конфиге через переменную окружения
