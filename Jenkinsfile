@@ -36,6 +36,13 @@ pipeline {
     }
 
     stages {
+        stage('Cleanup Previous Runs') {
+            steps {
+                echo '🧹 Очищаем возможные zombie-контейнеры от предыдущих запусков...'
+                sh 'docker compose down --remove-orphans || true'
+            }
+        }
+
         stage('Checkout') {
             steps {
                 echo '📥 Клонируем репозиторий...'
