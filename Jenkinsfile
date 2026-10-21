@@ -119,7 +119,7 @@ pipeline {
             }
         }
 
-        stage('Extract Reports from Container') {
+                stage('Extract Reports from Container') {
             steps {
                 echo '📦 Извлекаем отчет из контейнера через docker cp...'
                 script {
@@ -127,10 +127,13 @@ pipeline {
                     
                     if (containerId) {
                         echo "✅ Найден контейнер: ${containerId}"
+                        
+                        echo '️  Очищаем папку reports от старых файлов...'
+                        sh "rm -f ${REPORT_DIR}/*.html || true"
+                        // =================================================
+                        
                         sh "mkdir -p ${REPORT_DIR}"
                         sh "docker cp ${containerId}:/app/reports/. ./${REPORT_DIR}/"
-                        
-                        // Критически важно для прав доступа в Jenkins
                         sh "chmod -R 777 ${REPORT_DIR} || true"
                         
                         echo "🔍 Проверка содержимого:"
@@ -140,7 +143,7 @@ pipeline {
                     }
                 }
             }
-        }        
+        }
 
         stage('Collect Reports') {
             when {
