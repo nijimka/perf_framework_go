@@ -1,0 +1,9 @@
+.git
+.gitlab-ci.yml
+.DS_Store
+bin/
+reports/
+README.md
+perf.sh
+perf.ps1
+mock-server/

@@ -1,0 +1,55 @@
+# Определяем этапы пайплайна
+stages:
+  - build
+  - test
+
+# Переменные для всего пайплайна
+variables:
+  DOCKER_DRIVER: overlay2
+  # Отключаем TLS для DinD, чтобы упростить настройку (безопасно внутри изолированного CI)
+  DOCKER_TLS_CERTDIR: ""
+
+# ==========================================
+# Этап 1: Сборка образов
+# ==========================================
+build-images:
+  stage: build
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  before_script:
+    # Логинимся в GitLab Container Registry
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    # Собираем образы и помечаем их тегом текущего коммита
+    - sh ./perf.sh docker-build
+    # (Опционально) Можно запушить образы в реестр GitLab для дальнейшего использования
+    # - docker compose push
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+# ==========================================
+# Этап 2: Нагрузочное тестирование
+# ==========================================
+performance-test:
+  stage: test
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    # Собираем образы (на случай, если джоба build-images была пропущена)
+    - sh ./perf.sh docker-build
+    # Запускаем тесты и возвращаем код завершения контейнера perf-test
+    - sh ./perf.sh docker-test
+  after_script:
+    # Очистка контейнеров после завершения, чтобы не засорять раннер
+    - docker compose down
+  artifacts:
+    when: always # Сохраняем артефакты даже если тесты упали (чтобы посмотреть отчет об ошибке)
+    paths:
+      - reports/ # Папка с нашим HTML-отчетом
+    expire_in: 1 weeks # Хранить 2 недели
+  rules:
+    - when: manual # Запуск строго вручную, как ты и просил в самом начале!

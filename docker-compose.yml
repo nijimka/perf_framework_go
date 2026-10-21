@@ -1,0 +1,32 @@
+services:
+  mock-server:
+    build:
+      context: ./mock-server
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/login"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
+    networks:
+      - perf-network
+
+  perf-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      mock-server:
+        condition: service_healthy
+    environment:
+      - TARGET_URL=http://mock-server:8080
+    networks:
+      - perf-network
+    # Переопределяем base_url в конфиге через переменную окружения
+
+networks:
+  perf-network:
+    driver: bridge

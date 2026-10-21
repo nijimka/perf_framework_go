@@ -1,0 +1,23 @@
+target:
+  base_url: "http://localhost:8080"
+  timeout_ms: 5000
+
+# Профиль нагрузки
+load_profile:
+  type: "ramp-up"           # constant или ramp-up
+  ramp_up_duration_sec: 10  # За сколько секунд нарастить нагрузку (только для ramp-up)
+  target_workers: 30        # Целевое количество воркеров
+
+scenarios:
+  - name: "authorized_user_flow"
+    iterations: 50          # Каждый воркер пройдет сценарий 50 раз
+    steps:
+      - name: "login"
+        method: "POST"
+        path: "/api/login"
+        save_token: true
+
+      - name: "get_data"
+        method: "GET"
+        path: "/api/data"
+        use_token: true
