@@ -16,8 +16,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    args:
-      CACHE_BUST: ${CACHE_BUST:-1}   
+      args:
+        CACHE_BUST: ${CACHE_BUST:-1}   
     depends_on:
       mock-server:
         condition: service_healthy
