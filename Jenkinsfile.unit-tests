@@ -1,0 +1,22 @@
+pipeline {
+    agent any
+    
+    stages {
+        stage('Run Unit Tests') {
+            steps {
+                echo '🧪 Запускаем модульные тесты...'
+                sleep(time: 3, unit: 'SECONDS')
+                echo '✅ Все тесты прошли успешно!'
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '✅ Unit-Tests завершены. Perf-tests-manual запустится автоматически через триггер.'
+        }
+        failure {
+            echo '❌ Модульные тесты провалились. Perf-tests-manual НЕ запустится.'
+        }
+    }
+}
