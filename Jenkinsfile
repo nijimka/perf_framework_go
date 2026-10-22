@@ -140,7 +140,7 @@ pipeline {
                 publishHTML([
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
-                    keepAll: false, // Показываем в боковом меню только отчет последней сборки
+                    keepAll: true,
                     reportDir: "${REPORT_DIR}",
                     reportFiles: '*.html',
                     reportName: 'Performance Report',
