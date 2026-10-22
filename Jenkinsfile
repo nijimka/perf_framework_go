@@ -22,6 +22,11 @@ pipeline {
             defaultValue: true,
             description: 'Генерировать HTML-отчет'
         )
+        booleanParam(
+            name: 'FORCE_DOCKER_REBUILD',
+            defaultValue: false,
+            description: 'Поставьте галочку, чтобы принудительно пересобрать Docker образы без кэша'
+        )
     }
 
     options {

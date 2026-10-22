@@ -1,3 +1,5 @@
+ARG CACHE_BUST=1
+
 FROM golang:1.27.2-alpine AS builder
 WORKDIR /app
 
