@@ -1,0 +1,5 @@
+**/*.gohtml
+**/*.html.tmpl
+templates/
+vendor/
+node_modules/

@@ -1,0 +1,20 @@
+# Указываем Git явно, какие окончания строк использовать для разных типов файлов
+
+# Go файлы - всегда LF
+*.go text eol=lf
+
+# JSON файлы (конфиги) - всегда LF
+*.json text eol=lf
+
+# Markdown - всегда LF
+*.md text eol=lf
+
+# CSS/HTML - всегда LF
+*.css text eol=lf
+*.html text eol=lf
+*.tmpl text eol=lf
+
+# Бинарные файлы - не трогать
+*.exe binary
+*.png binary
+*.jpg binary

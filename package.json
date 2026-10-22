@@ -1,0 +1,26 @@
+{
+  "name": "perf-framework",
+  "version": "1.0.0",
+  "description": "Нагрузочный фреймворк на Go для тестирования производительности API. Поддерживает stateful-сценарии, многопоточность, различные профили нагрузки и генерацию HTML-отчетов.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nijimka/perf_framework_go.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nijimka/perf_framework_go/issues"
+  },
+  "homepage": "https://github.com/nijimka/perf_framework_go#readme",
+  "devDependencies": {
+    "postcss-html": "^2.0.0",
+    "prettier": "^3.9.10",
+    "stylelint": "^17.16.0",
+    "stylelint-config-standard": "^40.0.0"
+  }
+}
