@@ -73,6 +73,12 @@ type ReportData struct {
 	P95ResponseTime string
 	TotalTestTime   string
 	GeneratedAt     string
+
+	// Для CSS-графика (высота в процентах)
+	MinHeight float64
+	AvgHeight float64
+	P95Height float64
+	MaxHeight float64
 }
 
 func (m *Metrics) GetReportData(baseURL string) ReportData {
@@ -107,6 +113,14 @@ func (m *Metrics) GetReportData(baseURL string) ReportData {
 			totalTestTime := m.TestEndTime.Sub(m.TestStartTime)
 			data.TotalTestTime = totalTestTime.String()
 			data.RPS = float64(m.TotalRequests) / totalTestTime.Seconds()
+		}
+
+		maxVal := m.MaxResponseTime.Seconds()
+		if maxVal > 0 {
+			data.MinHeight = (m.MinResponseTime.Seconds() / maxVal) * 100
+			data.AvgHeight = ((m.TotalDuration / time.Duration(m.TotalRequests)).Seconds() / maxVal) * 100
+			data.P95Height = (m.ResponseTimes[int(float64(len(m.ResponseTimes))*0.95)].Seconds() / maxVal) * 100
+			data.MaxHeight = 100 // Максимум всегда 100%
 		}
 	}
 

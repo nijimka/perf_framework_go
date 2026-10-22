@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Отчет о нагрузочном тестировании</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -167,13 +166,69 @@
             font-family: 'Courier New', monospace;
         }
         
+        /* CSS Bar Chart */
         .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 20px;
             background: #f8f9fa;
             border-radius: 15px;
-            padding: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 300px;
+            padding: 20px 0;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .bar-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 120px;
+        }
+        
+        .bar {
+            width: 60px;
+            border-radius: 10px 10px 0 0;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 10px;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        .bar:hover {
+            transform: scaleY(1.05);
+            filter: brightness(1.1);
+        }
+        
+        .bar.min { background: linear-gradient(180deg, #10b981 0%, #059669 100%); }
+        .bar.avg { background: linear-gradient(180deg, #667eea 0%, #5a67d8 100%); }
+        .bar.p95 { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
+        .bar.max { background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%); }
+        
+        .bar-label {
+            margin-top: 15px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4b5563;
+            text-align: center;
+        }
+        
+        .bar-value {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #6b7280;
+            font-family: 'Courier New', monospace;
         }
         
         .footer {
@@ -183,30 +238,6 @@
             color: #6b7280;
             font-size: 14px;
             border-top: 1px solid #e5e7eb;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-        
-        .badge.good {
-            background: #10b981;
-            color: white;
-        }
-        
-        .badge.warning {
-            background: #f59e0b;
-            color: white;
-        }
-        
-        .badge.bad {
-            background: #ef4444;
-            color: white;
         }
     </style>
 </head>
@@ -241,11 +272,39 @@
                 </div>
             </div>
             
-            <!-- Response Time Chart -->
+            <!-- CSS Bar Chart -->
             <div class="section">
                 <h2> Распределение времени ответа</h2>
                 <div class="chart-container">
-                    <canvas id="responseTimeChart"></canvas>
+                    <div class="bar-chart">
+                        <div class="bar-wrapper">
+                            <div class="bar min" style="height: {{.MinHeight}}%;">
+                                {{.MinResponseTime}}
+                            </div>
+                            <div class="bar-label">Мин.</div>
+                        </div>
+                        
+                        <div class="bar-wrapper">
+                            <div class="bar avg" style="height: {{.AvgHeight}}%;">
+                                {{.AvgResponseTime}}
+                            </div>
+                            <div class="bar-label">Среднее</div>
+                        </div>
+                        
+                        <div class="bar-wrapper">
+                            <div class="bar p95" style="height: {{.P95Height}}%;">
+                                {{.P95ResponseTime}}
+                            </div>
+                            <div class="bar-label">P95</div>
+                        </div>
+                        
+                        <div class="bar-wrapper">
+                            <div class="bar max" style="height: {{.MaxHeight}}%;">
+                                {{.MaxResponseTime}}
+                            </div>
+                            <div class="bar-label">Макс.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -289,73 +348,5 @@
             Сгенерировано Perf-Framework на Go | {{.GeneratedAt}}
         </div>
     </div>
-    
-    <script>
-        // Parse time values (assuming they're in format like "89.757111ms")
-        function parseTime(timeStr) {
-            const match = timeStr.match(/([\d.]+)(ms|s)/);
-            if (!match) return 0;
-            const value = parseFloat(match[1]);
-            return match[2] === 's' ? value * 1000 : value;
-        }
-        
-        // Chart data
-        const avgTime = parseTime("{{.AvgResponseTime}}");
-        const minTime = parseTime("{{.MinResponseTime}}");
-        const maxTime = parseTime("{{.MaxResponseTime}}");
-        const p95Time = parseTime("{{.P95ResponseTime}}");
-        
-        // Create chart
-        const ctx = document.getElementById('responseTimeChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Мин.', 'Среднее', 'P95', 'Макс.'],
-                datasets: [{
-                    label: 'Время ответа (ms)',
-                    data: [minTime, avgTime, p95Time, maxTime],
-                    backgroundColor: [
-                        'rgba(16, 185, 129, 0.8)',
-                        'rgba(102, 126, 234, 0.8)',
-                        'rgba(245, 158, 11, 0.8)',
-                        'rgba(239, 68, 68, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgb(16, 185, 129)',
-                        'rgb(102, 126, 234)',
-                        'rgb(245, 158, 11)',
-                        'rgb(239, 68, 68)'
-                    ],
-                    borderWidth: 2,
-                    borderRadius: 10
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.parsed.y.toFixed(2) + ' ms';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Время (ms)'
-                        }
-                    }
-                }
-            }
-        });
-    </script>
 </body>
 </html>
