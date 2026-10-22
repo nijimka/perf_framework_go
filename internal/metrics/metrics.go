@@ -94,9 +94,11 @@ func (m *Metrics) GetReportData(baseURL string) ReportData {
 	}
 
 	if m.TotalRequests > 0 {
-		data.AvgResponseTime = (m.TotalDuration / time.Duration(m.TotalRequests)).String()
-		data.MinResponseTime = m.MinResponseTime.String()
-		data.MaxResponseTime = m.MaxResponseTime.String()
+		// Округляем до 2 знаков после запятой для читаемости
+		avgDuration := m.TotalDuration / time.Duration(m.TotalRequests)
+		data.AvgResponseTime = formatDuration(avgDuration)
+		data.MinResponseTime = formatDuration(m.MinResponseTime)
+		data.MaxResponseTime = formatDuration(m.MaxResponseTime)
 
 		if len(m.ResponseTimes) > 0 {
 			sort.Slice(m.ResponseTimes, func(i, j int) bool {
@@ -106,25 +108,34 @@ func (m *Metrics) GetReportData(baseURL string) ReportData {
 			if p95Index >= len(m.ResponseTimes) {
 				p95Index = len(m.ResponseTimes) - 1
 			}
-			data.P95ResponseTime = m.ResponseTimes[p95Index].String()
+			data.P95ResponseTime = formatDuration(m.ResponseTimes[p95Index])
 		}
 
 		if !m.TestStartTime.IsZero() && !m.TestEndTime.IsZero() {
 			totalTestTime := m.TestEndTime.Sub(m.TestStartTime)
-			data.TotalTestTime = totalTestTime.String()
+			data.TotalTestTime = formatDuration(totalTestTime)
 			data.RPS = float64(m.TotalRequests) / totalTestTime.Seconds()
 		}
 
+		// Расчет высоты баров
 		maxVal := m.MaxResponseTime.Seconds()
 		if maxVal > 0 {
 			data.MinHeight = (m.MinResponseTime.Seconds() / maxVal) * 100
-			data.AvgHeight = ((m.TotalDuration / time.Duration(m.TotalRequests)).Seconds() / maxVal) * 100
-			data.P95Height = (m.ResponseTimes[int(float64(len(m.ResponseTimes))*0.95)].Seconds() / maxVal) * 100
-			data.MaxHeight = 100 // Максимум всегда 100%
+			data.AvgHeight = (avgDuration.Seconds() / maxVal) * 100
+			p95Duration := m.ResponseTimes[int(float64(len(m.ResponseTimes))*0.95)].Seconds()
+			data.P95Height = (p95Duration / maxVal) * 100
+			data.MaxHeight = 100
 		}
 	}
 
 	return data
+}
+
+func formatDuration(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%.2fms", float64(d.Milliseconds())+float64(d.Microseconds()%1000)/1000.0)
+	}
+	return fmt.Sprintf("%.2fs", d.Seconds())
 }
 
 func (m *Metrics) Print() {

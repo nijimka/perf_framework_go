@@ -197,12 +197,11 @@
             transition: all 0.3s ease;
             position: relative;
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
-            padding-top: 10px;
             color: white;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 12px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
         
@@ -226,9 +225,11 @@
         
         .bar-value {
             margin-top: 5px;
-            font-size: 12px;
-            color: #6b7280;
+            font-size: 13px;
+            color: #1f2937;
             font-family: 'Courier New', monospace;
+            font-weight: 600;
+            text-align: center;
         }
         
         .footer {
@@ -279,30 +280,30 @@
                     <div class="bar-chart">
                         <div class="bar-wrapper">
                             <div class="bar min" style="height: {{.MinHeight}}%;">
-                                {{.MinResponseTime}}
                             </div>
                             <div class="bar-label">Мин.</div>
+                            <div class="bar-value">{{.MinResponseTime}}</div>
                         </div>
                         
                         <div class="bar-wrapper">
                             <div class="bar avg" style="height: {{.AvgHeight}}%;">
-                                {{.AvgResponseTime}}
                             </div>
                             <div class="bar-label">Среднее</div>
+                            <div class="bar-value">{{.AvgResponseTime}}</div>
                         </div>
                         
                         <div class="bar-wrapper">
                             <div class="bar p95" style="height: {{.P95Height}}%;">
-                                {{.P95ResponseTime}}
                             </div>
                             <div class="bar-label">P95</div>
+                            <div class="bar-value">{{.P95ResponseTime}}</div>
                         </div>
                         
                         <div class="bar-wrapper">
                             <div class="bar max" style="height: {{.MaxHeight}}%;">
-                                {{.MaxResponseTime}}
                             </div>
                             <div class="bar-label">Макс.</div>
+                            <div class="bar-value">{{.MaxResponseTime}}</div>
                         </div>
                     </div>
                 </div>
