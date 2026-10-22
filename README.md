@@ -265,6 +265,108 @@ macOS / Linux:
 
 ---
 
+### Jenkins
+
+Проект включает `Jenkinsfile` с поддержкой:
+- **Ручного запуска** с параметрами (профиль нагрузки, количество воркеров, итерации)
+- **Автоматического запуска по таймеру** (каждые 5 минут)
+- **Запуска по триггеру** от другой джобы (downstream/upstream)
+- **Сохранения HTML-отчетов** как артефактов сборки
+- **Умного управления кэшем Docker** (параметр `FORCE_DOCKER_REBUILD` для точечного сброса кэша)
+
+#### Локальный запуск Jenkins
+
+Для локального тестирования пайплайна можно поднять Jenkins в Docker:
+
+```bash
+# Запуск Jenkins
+docker compose -f docker-compose-jenkins.yml up -d
+
+# Получение начального пароля
+docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+Откройте `http://localhost:8080`, введите пароль и завершите первоначальную настройку (установите рекомендуемые плагины).
+
+**Необходимые плагины Jenkins:**
+- **Docker Pipeline** — для работы с Docker в pipeline
+- **HTML Publisher** — для просмотра HTML-отчетов в интерфейсе
+- **Git** — для клонирования репозитория
+
+#### Настройка Content Security Policy (CSP)
+
+Для корректного отображения стилей и графиков Chart.js в отчетах Jenkins необходимо настроить CSP. Перейдите в **Manage Jenkins → Script Console** и выполните:
+
+```groovy
+System.setProperty("hudson.model.DirectoryBrowserSupport.CSP", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:;")
+```
+
+#### Настройка джоб в Jenkins
+
+**1. Ручной запуск тестов (`Perf-tests-manual`):**
+- Создайте Pipeline джобу
+- В секции **Pipeline** выберите **Pipeline script from SCM**
+- Укажите ваш Git-репозиторий и путь `Jenkinsfile`
+- Джоба будет доступна через **Build with Parameters**
+
+**2. Автоматический запуск по таймеру:**
+- Создайте вторую джобу (например, `Perf-tests-scheduled`)
+- В настройках джобы включите **Build periodically**
+- Укажите расписание: `H/5 * * * *` (каждые 5 минут)
+- Используйте тот же `Jenkinsfile`
+
+**3. Запуск по триггеру от другой джобы:**
+
+Создайте upstream-джобу (например, `Unit-Tests`) с таким `Jenkinsfile`:
+
+```groovy
+pipeline {
+    agent any
+    
+    stages {
+        stage('Run Unit Tests') {
+            steps {
+                echo '🧪 Запускаем модульные тесты...'
+                sh 'go test ./...'
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '🚀 Тесты прошли успешно. Запускаем нагрузочные тесты в фоне...'
+            build job: 'Perf-tests-manual', 
+                 wait: false,  // Асинхронный запуск — не ждать завершения
+                 parameters: [
+                     string(name: 'LOAD_PROFILE', value: 'constant'),
+                     string(name: 'TARGET_WORKERS', value: '10'),
+                     string(name: 'ITERATIONS', value: '50')
+                 ]
+        }
+    }
+}
+```
+
+После успешного завершения `Unit-Tests` автоматически запустится `Perf-tests-manual` в фоне (параметр `wait: false` гарантирует, что upstream-джоба не будет ждать завершения нагрузочных тестов).
+
+#### Управление кэшем Docker
+
+При изменении файлов (например, шаблона отчета `report.html.tmpl`) Docker может использовать закэшированные слои. Для принудительной пересборки:
+
+1. В `Jenkinsfile` добавлен параметр `FORCE_DOCKER_REBUILD` (галочка в интерфейсе Jenkins)
+2. В `Dockerfile` объявлен `ARG CACHE_BUST=1` после `FROM`
+3. В `docker-compose.yml` для сервиса `perf-test` передается `CACHE_BUST: ${CACHE_BUST:-1}`
+
+Когда галочка `FORCE_DOCKER_REBUILD` установлена, Jenkins передает уникальный `BUILD_ID` в `CACHE_BUST`, что заставляет Docker пересобрать образ с нуля. По умолчанию (галочка снята) используется быстрый кэш.
+
+#### Просмотр отчетов в Jenkins
+
+1. После успешной сборки откройте джобу `Perf-tests-manual`
+2. В левом меню найдите ссылку **Performance Report** (требует плагин HTML Publisher)
+3. Или скачайте HTML-файл из раздела **Build Artifacts**
+
+---
+
 ## 🛠 Расширение фреймворка
 
 ### Добавление нового сценария
